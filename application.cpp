@@ -15,13 +15,13 @@ Carloop<CarloopRevision2> carloop;
 
 int canMessageCount = 0;
 
-// ODB CAN message IDs
+// OBD CAN message IDs
 const auto OBD_REQUEST_ID      = 0x7E0;
 const auto OBD_REPLY_ID        = 0x7E8;
 
 const auto OBD_PID_SERVICE     = 0x01;
 
-// ODB PID constants
+// OBD PID constants
 const auto ENGINE_COOLANT_TEMP = 0x05;
 const auto ENGINE_RPM          = 0x0C;
 const auto VEHICLE_SPEED       = 0x0D;
