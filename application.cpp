@@ -10,6 +10,7 @@ void delayUntilNextRequest();
 void printValuesAtInterval();
 void printValues();
 String dumpMessage(const CANMessage &message);
+bool byteArray8Equal(uint8_t a1[8], uint8_t a2[8]);
 
 Carloop<CarloopRevision2> carloop;
 
@@ -35,11 +36,12 @@ const auto OBD_PID_O2_VOLTAGE          = 0x14;
 const auto OBD_PID_THROTTLE    	       = 0x11;
 
 
-const uint8_t pid = OBD_PID_SUPPORTED_PIDS;
+const uint8_t pid = OBD_PID_MIL_STATUS;
 const int ledPin = D7;
 
 auto *obdLoopFunction = sendObdRequest;
 unsigned long transitionTime = 0;
+uint8_t lastMessageData[8];
 
 void setup() {
 	pinMode(ledPin, OUTPUT);
@@ -92,13 +94,18 @@ void waitForObdResponse() {
 	String dump;
     CANMessage message;
     while(carloop.can().receive(message)) {
-        if(message.id == OBD_CAN_REPLY_ID && message.data[2] == pid) {
-            responseReceived = true;
-        }
 		canMessageCount++;
-		// If the serial port is overwhelmed, limit messages
-		// if(message.id >= 0x700)
-		dump += dumpMessage(message);
+		if(message.id == OBD_CAN_REPLY_ID && message.data[2] == pid) {
+			responseReceived = true;
+		}
+		if (message.id == 0x130) {
+			if (!byteArray8Equal(message.data, lastMessageData)) {
+				memcpy(lastMessageData, message.data, 8);
+				dump += dumpMessage(message);
+			}
+		} else {
+			dump += dumpMessage(message);
+		}
     }
 	Serial.write(dump);
 
@@ -145,4 +152,11 @@ String dumpMessage(const CANMessage &message) {
 	}
 	str += "\"}\n";
 	return str;
+}
+
+bool byteArray8Equal(uint8_t a1[8], uint8_t a2[8]) {
+	for (int i = 0; i < 8; i++) {
+		if (a1[i] != a2[i]) return false;
+	}
+	return true;
 }
