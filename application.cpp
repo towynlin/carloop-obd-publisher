@@ -4,14 +4,11 @@
 SYSTEM_MODE(SEMI_AUTOMATIC);
 SYSTEM_THREAD(ENABLED);
 
-void receiveCanMessages();
 void sendObdRequest();
 void waitForObdResponse();
 void delayUntilNextRequest();
 void printValuesAtInterval();
 void printValues();
-void printFloat(float val, bool valid, int len, int prec);
-void printDateTime(TinyGPSDate &d, TinyGPSTime &t);
 String dumpMessage(const CANMessage &message);
 
 Carloop<CarloopRevision2> carloop;
@@ -50,19 +47,6 @@ void loop() {
 	carloop.update();
 	printValuesAtInterval();
 	obdLoopFunction();
-}
-
-// currently unused
-void receiveCanMessages() {
-	String dump;
-	CANMessage message;
-	while(carloop.can().receive(message)) {
-		canMessageCount++;
-		// If the serial port or TCP server is overwhelmed, limit messages
-		// if(message.id >= 0x700)
-		dump += dumpMessage(message);
-	}
-	Serial.write(dump);
 }
 
 
@@ -130,41 +114,9 @@ void printValuesAtInterval() {
 }
 
 void printValues() {
-	//auto &gps = carloop.gps();
 	Serial.printf("Battery voltage: %12f ", carloop.battery());
 	Serial.printf("CAN messages: %12d ", canMessageCount);
-	//Serial.printf("GPS %6d chars: ", gps.charsProcessed());
-	//printFloat(gps.location.lat(), gps.location.isValid(), 11, 6);
-	//printFloat(gps.location.lng(), gps.location.isValid(), 12, 6);
-	//printDateTime(gps.date, gps.time);
 	Serial.println("");
-}
-
-void printFloat(float val, bool valid, int len, int prec) {
-	if(valid) {
-		char format[10];
-		snprintf(format, sizeof(format), "%%%d.%df", len, prec);
-		Serial.printf(format, val);
-	} else {
-		while(len-- > 1) {
-			Serial.print('*');
-		}
-		Serial.print(' ');
-	}
-}
-
-void printDateTime(TinyGPSDate &d, TinyGPSTime &t) {
-	if (d.isValid()) {
-		Serial.printf("%02d/%02d/%02d ", d.month(), d.day(), d.year());
-	} else {
-		Serial.print("********** ");
-	}
-
-	if (t.isValid()) {
-		Serial.printf("%02d:%02d:%02d ", t.hour(), t.minute(), t.second());
-	} else {
-		Serial.print("******** ");
-	}
 }
 
 String dumpMessage(const CANMessage &message) {
