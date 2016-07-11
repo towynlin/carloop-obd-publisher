@@ -16,20 +16,26 @@ Carloop<CarloopRevision2> carloop;
 int canMessageCount = 0;
 
 // OBD CAN message IDs
-const auto OBD_REQUEST_ID      = 0x7E0;
-const auto OBD_REPLY_ID        = 0x7E8;
+const auto OBD_CAN_BROADCAST_ID    = 0X7DF;
+const auto OBD_CAN_REQUEST_ID      = 0x7E0;
+const auto OBD_CAN_REPLY_ID        = 0x7E8;
 
-const auto OBD_PID_SERVICE     = 0x01;
+// OBD services / modes
+const auto OBD_MODE_CURRENT_DATA = 0x01;
 
-// OBD PID constants
-const auto ENGINE_COOLANT_TEMP = 0x05;
-const auto ENGINE_RPM          = 0x0C;
-const auto VEHICLE_SPEED       = 0x0D;
-const auto MAF_SENSOR          = 0x10;
-const auto O2_VOLTAGE          = 0x14;
-const auto THROTTLE    	       = 0x11;
+// OBD PIDs
+const auto OBD_PID_SUPPORTED_PIDS      = 0x00;
+// MIL = malfunction indicator lamp = check engine light
+const auto OBD_PID_MIL_STATUS          = 0x01;
+const auto OBD_PID_ENGINE_COOLANT_TEMP = 0x05;
+const auto OBD_PID_ENGINE_RPM          = 0x0C;
+const auto OBD_PID_VEHICLE_SPEED       = 0x0D;
+const auto OBD_PID_MAF_SENSOR          = 0x10;
+const auto OBD_PID_O2_VOLTAGE          = 0x14;
+const auto OBD_PID_THROTTLE    	       = 0x11;
 
-const uint8_t pid = ENGINE_RPM;
+
+const uint8_t pid = OBD_PID_SUPPORTED_PIDS;
 const int ledPin = D7;
 
 auto *obdLoopFunction = sendObdRequest;
@@ -50,15 +56,25 @@ void loop() {
 }
 
 
-/* Begin: OBD Loop Functions */
+/*************** Begin: OBD Loop Functions ****************/
 
+/* For help understanding the OBD Query format over CAN bus,
+ * see: https://en.wikipedia.org/wiki/OBD-II_PIDs#Query
+ *
+ * For help understanding why the first data byte is 0x02,
+ * see: http://hackaday.com/2013/10/29/can-hacking-protocols/
+ *
+ * For help understanding modes and PIDs,
+ * see: https://en.wikipedia.org/wiki/OBD-II_PIDs#Modes
+ * and: https://en.wikipedia.org/wiki/OBD-II_PIDs#Standard_PIDs
+ */
 void sendObdRequest() {
     CANMessage message;
-    message.id = OBD_REQUEST_ID;
-    message.len = 8;
-    message.data[0] = 0x02;
-    message.data[1] = OBD_PID_SERVICE;
-    message.data[2] = pid;
+    message.id = OBD_CAN_BROADCAST_ID;
+    message.len = 8; // just always use 8
+    message.data[0] = 0x02; // 0 = single-frame format, 2  = num data bytes
+    message.data[1] = OBD_MODE_CURRENT_DATA; // OBD MODE
+    message.data[2] = pid; // OBD PID
     carloop.can().transmit(message);
 
     obdLoopFunction = waitForObdResponse;
@@ -76,7 +92,7 @@ void waitForObdResponse() {
 	String dump;
     CANMessage message;
     while(carloop.can().receive(message)) {
-        if(message.id == OBD_REPLY_ID && message.data[2] == pid) {
+        if(message.id == OBD_CAN_REPLY_ID && message.data[2] == pid) {
             responseReceived = true;
         }
 		canMessageCount++;
@@ -100,7 +116,7 @@ void delayUntilNextRequest() {
     }
 }
 
-/* End: OBD Loop Functions */
+/*************** End: OBD Loop Functions ****************/
 
 
 void printValuesAtInterval() {
