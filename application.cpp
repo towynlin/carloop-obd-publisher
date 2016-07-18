@@ -50,12 +50,22 @@ const auto OBD_PID_COMMANDED_EVAPORATIVE_PURGE           = 0x2e;
 const auto OBD_PID_FUEL_TANK_LEVEL_INPUT                 = 0x2f;
 const auto OBD_PID_WARM_UPS_SINCE_CODES_CLEARED          = 0x30;
 const auto OBD_PID_DISTANCE_TRAVELED_SINCE_CODES_CLEARED = 0x31;
-const auto OBD_PID_ABS_BAROMETRIC_PRESSURE               = 0x33;
+const auto OBD_PID_ABSOLUTE_BAROMETRIC_PRESSURE          = 0x33;
 const auto OBD_PID_O2_SENSOR_1                           = 0x34;
 const auto OBD_PID_CATALYST_TEMPERATURE_BANK1_SENSOR1    = 0x3c;
 const auto OBD_PID_SUPPORTED_PIDS_41_60                  = 0x40;
+const auto OBD_PID_MONITOR_STATUS                        = 0X41;
+const auto OBD_PID_CONTROL_MODULE_VOLTAGE                = 0X42;
+const auto OBD_PID_ABSOLUTE_LOAD_VALUE                   = 0X43;
+const auto OBD_PID_FUEL_AIR_COMMANDED_EQUIV_RATIO        = 0X44;
+const auto OBD_PID_RELATIVE_THROTTLE                     = 0X45;
+const auto OBD_PID_AMBIENT_AIR_TEMPERATURE               = 0X46;
+const auto OBD_PID_ABSOLUTE_THROTTLE_B                   = 0X47;
+const auto OBD_PID_ACCELERATOR_PEDAL_POSITION_D          = 0X49;
+const auto OBD_PID_ACCELERATOR_PEDAL_POSITION_E          = 0X4a;
+const auto OBD_PID_COMMANDED_THROTTLE_ACTUATOR           = 0X4c;
 
-const size_t NUM_PIDS_TO_REQUEST = 21;
+const size_t NUM_PIDS_TO_REQUEST = 30;
 const uint8_t pidsToRequest[NUM_PIDS_TO_REQUEST] = {
 	OBD_PID_ENGINE_LOAD,
 	OBD_PID_COOLANT_TEMPERATURE,
@@ -74,16 +84,24 @@ const uint8_t pidsToRequest[NUM_PIDS_TO_REQUEST] = {
 	OBD_PID_FUEL_TANK_LEVEL_INPUT,
 	OBD_PID_WARM_UPS_SINCE_CODES_CLEARED,
 	OBD_PID_DISTANCE_TRAVELED_SINCE_CODES_CLEARED,
-	OBD_PID_ABS_BAROMETRIC_PRESSURE,
+	OBD_PID_ABSOLUTE_BAROMETRIC_PRESSURE,
 	OBD_PID_O2_SENSOR_1,
 	OBD_PID_CATALYST_TEMPERATURE_BANK1_SENSOR1,
-	OBD_PID_SUPPORTED_PIDS_41_60
+	OBD_PID_MONITOR_STATUS,
+	OBD_PID_CONTROL_MODULE_VOLTAGE,
+	OBD_PID_ABSOLUTE_LOAD_VALUE,
+	OBD_PID_FUEL_AIR_COMMANDED_EQUIV_RATIO,
+	OBD_PID_RELATIVE_THROTTLE,
+	OBD_PID_AMBIENT_AIR_TEMPERATURE,
+	OBD_PID_ABSOLUTE_THROTTLE_B,
+	OBD_PID_ACCELERATOR_PEDAL_POSITION_D,
+	OBD_PID_ACCELERATOR_PEDAL_POSITION_E,
+	OBD_PID_COMMANDED_THROTTLE_ACTUATOR
 };
 uint8_t pidIndex = NUM_PIDS_TO_REQUEST - 1;
 const int ledPin = D7;
 
 String dumpForPublish;
-int numBufferedMessages = 0;
 
 auto *obdLoopFunction = sendObdRequest;
 unsigned long transitionTime = 0;
@@ -148,7 +166,6 @@ void waitForObdResponse() {
 			if (!byteArray8Equal(message.data, lastMessageData)) {
 				memcpy(lastMessageData, message.data, 8);
 				dump += dumpMessage(message);
-				numBufferedMessages++;
 			}
 		} else {
 			if (message.id >= OBD_CAN_REPLY_ID_MIN &&
@@ -157,15 +174,13 @@ void waitForObdResponse() {
 				responseReceived = true;
 			}
 			dump += dumpMessage(message);
-			numBufferedMessages++;
 		}
 	}
 
 	Serial.write(dump);
 	dumpForPublish += dump;
-	if (numBufferedMessages >= 9) {
+	if (dumpForPublish.length() >= 220) {
 		Particle.publish("m", dumpForPublish, 60, PRIVATE);
-		numBufferedMessages = 0;
 		dumpForPublish.remove(0);
 	}
 
@@ -203,8 +218,20 @@ void printValues() {
 }
 
 String dumpMessage(const CANMessage &message) {
-	String str = String::format("%.2f:", millis() / 1000.0);
-	for (int i = 0; i < message.len; i++) {
+	String str = String::format("%.1f:", millis() / 1000.0);
+	int startIdx = 0;
+	int lastIdx = message.len - 1;
+	if (message.id >= 0x700) {
+		// We can ignore the first two bytes
+		// data[0] is the length
+		// data[1] is the UDS service response ID, always 0x41 for me
+		// data[2] is important to include - it's the PID
+		startIdx = 2;
+		if (message.data[0] < message.len) {
+			lastIdx = message.data[0];
+		}
+	}
+	for (int i = startIdx; i <= lastIdx; i++) {
 		str += String::format("%02x", message.data[i]);
 	}
 	str += ",";
