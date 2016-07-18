@@ -137,30 +137,30 @@ void loop() {
 void sendObdRequest() {
 	pidIndex = (pidIndex + 1) % NUM_PIDS_TO_REQUEST;
 
-    CANMessage message;
-    message.id = OBD_CAN_BROADCAST_ID;
-    message.len = 8; // just always use 8
-    message.data[0] = 0x02; // 0 = single-frame format, 2  = num data bytes
-    message.data[1] = OBD_MODE_CURRENT_DATA; // OBD MODE
-    message.data[2] = pidsToRequest[pidIndex]; // OBD PID
+	CANMessage message;
+	message.id = OBD_CAN_BROADCAST_ID;
+	message.len = 8; // just always use 8
+	message.data[0] = 0x02; // 0 = single-frame format, 2  = num data bytes
+	message.data[1] = OBD_MODE_CURRENT_DATA; // OBD MODE
+	message.data[2] = pidsToRequest[pidIndex]; // OBD PID
 
-    carloop.can().transmit(message);
+	carloop.can().transmit(message);
 
-    obdLoopFunction = waitForObdResponse;
-    transitionTime = millis();
+	obdLoopFunction = waitForObdResponse;
+	transitionTime = millis();
 }
 
 void waitForObdResponse() {
-    if (millis() - transitionTime >= 100) {
-        obdLoopFunction = delayUntilNextRequest;
-        transitionTime = millis();
-        return;
-    }
+	if (millis() - transitionTime >= 100) {
+		obdLoopFunction = delayUntilNextRequest;
+		transitionTime = millis();
+		return;
+	}
 
-    bool responseReceived = false;
+	bool responseReceived = false;
 	String dump;
-    CANMessage message;
-    while (carloop.can().receive(message)) {
+	CANMessage message;
+	while (carloop.can().receive(message)) {
 		canMessageCount++;
 		if (message.id == 0x130) {
 			if (!byteArray8Equal(message.data, lastMessageData)) {
@@ -184,18 +184,18 @@ void waitForObdResponse() {
 		dumpForPublish.remove(0);
 	}
 
-    if (responseReceived) {
-        digitalWrite(ledPin, HIGH);
-    }
+	if (responseReceived) {
+		digitalWrite(ledPin, HIGH);
+	}
 }
 
 void delayUntilNextRequest() {
-    if (millis() - transitionTime >= 80) {
-        obdLoopFunction = sendObdRequest;
-        transitionTime = millis();
-    } else if (millis() - transitionTime >= 20) {
-        digitalWrite(ledPin, LOW);
-    }
+	if (millis() - transitionTime >= 80) {
+		obdLoopFunction = sendObdRequest;
+		transitionTime = millis();
+	} else if (millis() - transitionTime >= 20) {
+		digitalWrite(ledPin, LOW);
+	}
 }
 
 /*************** End: OBD Loop Functions ****************/
