@@ -1,4 +1,4 @@
-# carloop-obd-publisher
+# Carloop OBD Publisher
 
 Firmware for Particle Electron, publishes OBD data
 
@@ -6,7 +6,7 @@ Firmware for Particle Electron, publishes OBD data
 - https://www.particle.io/
 - https://en.wikipedia.org/wiki/OBD-II_PIDs#Standard_PIDs
 
-# decoding
+# Decoding
 
 Using the above Wikipedia page listing OBD-II PIDs, I decoded the following by hand
 from data received on my laptop (sitting at home) using the Particle CLI subscribing
@@ -59,3 +59,12 @@ Obvious next step: decode on laptop/server with a program instead of by hand.
 652.56    04413c    1873      Catalyst Temperature, Bank 1, Sensor 1: 585.9˚C
 652.74    064140    fed00000  pids supported 41-60 = 1111 1110 1101 = 41, 42, 43, 44, 45, 46, 47, 49, 4a, 4c
 ```
+
+# Licenses
+
+| Files | Author | License |
+| ----- | ------ | ------- |
+| application.cpp | Zachary Crockett | [Apache 2](https://www.apache.org/licenses/LICENSE-2.0) |
+| carloop.h, carloop.cpp | Julien Vanier | [MIT](https://opensource.org/licenses/MIT) |
+| TinyGPS++.h, TinyGPS++.cpp | Mikal Hart & others | [LGPL 2.1](https://www.gnu.org/licenses/old-licenses/lgpl-2.1.en.html) |
+| base85.h (modified) | Junio C Hamano & others | [GPL 2.0](https://www.gnu.org/licenses/old-licenses/gpl-2.0.en.html) |

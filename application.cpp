@@ -1,5 +1,22 @@
+/*
+ * Copyright 2016 Zachary Crockett
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 #include "application.h"
 #include "carloop.h"
+#include "base85.h"
 
 SYSTEM_MODE(SEMI_AUTOMATIC);
 SYSTEM_THREAD(ENABLED);
@@ -160,6 +177,8 @@ void waitForObdResponse() {
 	while (carloop.can().receive(message)) {
 		canMessageCount++;
 		if (message.id == 0x130) {
+			// This message gets sent every tenth of a second,
+			// so only publish it when the value changes.
 			if (!byteArray8Equal(message.data, lastMessageData)) {
 				memcpy(lastMessageData, message.data, 8);
 				dump += dumpMessage(message);
@@ -171,6 +190,11 @@ void waitForObdResponse() {
 
 	Serial.write(dump);
 	dumpForPublish += dump;
+	// change to:
+	// if > 196 binary bytes
+	// when each time stamp is exactly 2 bytes encoding integer tenths of a second
+	// and 1-5 data bytes follow
+	// then we base85 encode the binary to get close to the 255-byte publish limit
 	if (dumpForPublish.length() >= 220) {
 		Particle.publish("m", dumpForPublish, 60, PRIVATE);
 		dumpForPublish.remove(0);
@@ -204,6 +228,10 @@ void printValues() {
 }
 
 String dumpMessage(const CANMessage &message) {
+	// change to: each timestamp as exactly 2 bytes
+	// as unsigned integer tenths of a second
+	// wrap around carefully
+	// maybe (quick stab) -- uint16_t t = (millis() / 100) & 0xffff
 	String str = String::format("%.1f:", millis() / 1000.0);
 	int startIdx = 0;
 	int lastIdx = message.len - 1;
@@ -217,6 +245,9 @@ String dumpMessage(const CANMessage &message) {
 			lastIdx = message.data[0];
 		}
 	}
+	// hmm... Since the binary data can include zeros
+	// I may have to do the base85 encoding on the fly
+	// rather than right before publish...
 	for (int i = startIdx; i <= lastIdx; i++) {
 		str += String::format("%02x", message.data[i]);
 	}
