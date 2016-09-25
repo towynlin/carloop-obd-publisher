@@ -99,7 +99,6 @@ const uint8_t pidsToRequest[NUM_PIDS_TO_REQUEST] = {
 	OBD_PID_COMMANDED_THROTTLE_ACTUATOR
 };
 uint8_t pidIndex = NUM_PIDS_TO_REQUEST - 1;
-const int ledPin = D7;
 
 String dumpForPublish;
 
@@ -108,7 +107,6 @@ unsigned long transitionTime = 0;
 uint8_t lastMessageData[8];
 
 void setup() {
-	pinMode(ledPin, OUTPUT);
 	Serial.begin(115200);
 	carloop.begin();
 	Particle.connect();
@@ -157,7 +155,6 @@ void waitForObdResponse() {
 		return;
 	}
 
-	bool responseReceived = false;
 	String dump;
 	CANMessage message;
 	while (carloop.can().receive(message)) {
@@ -168,11 +165,6 @@ void waitForObdResponse() {
 				dump += dumpMessage(message);
 			}
 		} else {
-			if (message.id >= OBD_CAN_REPLY_ID_MIN &&
-					message.id <= OBD_CAN_REPLY_ID_MAX &&
-					message.data[2] == pidsToRequest[pidIndex]) {
-				responseReceived = true;
-			}
 			dump += dumpMessage(message);
 		}
 	}
@@ -183,18 +175,12 @@ void waitForObdResponse() {
 		Particle.publish("m", dumpForPublish, 60, PRIVATE);
 		dumpForPublish.remove(0);
 	}
-
-	if (responseReceived) {
-		digitalWrite(ledPin, HIGH);
-	}
 }
 
 void delayUntilNextRequest() {
 	if (millis() - transitionTime >= 80) {
 		obdLoopFunction = sendObdRequest;
 		transitionTime = millis();
-	} else if (millis() - transitionTime >= 20) {
-		digitalWrite(ledPin, LOW);
 	}
 }
 
