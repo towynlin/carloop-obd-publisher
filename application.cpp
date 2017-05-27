@@ -227,16 +227,24 @@ void printValues() {
 	Serial.println("");
 }
 
-String dumpMessage(const CANMessage &message) {
-	// change to: each timestamp as exactly 2 bytes
-	// as unsigned integer tenths of a second
-	// wrap around carefully
-	// maybe (quick stab) -- uint16_t t = (millis() / 100) & 0xffff
-	String str = String::format("%.1f:", millis() / 1000.0);
+// Converts a CAN message into 5-8 bytes.
+//   2 byte timestamp, unsigned int tenths of second
+//   1 byte remaining length, 2-5
+//   1 byte OBD-II PID
+//   1-4 bytes of OBD-II data
+// Base85 encodes 4 bytes into 5 characters.
+// We statically track 0-3 leftover bytes between each call.
+String dumpMessage(const CANMessage &message, bool shouldDumpLeftovers) {
+	static uint8_t encBuf[15];
+	static uint8_t *encP = encBuf;
+
+	uint16_t t = (millis() / 100) & 0xffff;
+	*encP++ = t >> 8;
+	*encP++ = t & 0xff;
+
 	int startIdx = 0;
 	int lastIdx = message.len - 1;
 	if (message.id >= 0x700) {
-		// We can ignore the first two bytes
 		// data[0] is the length
 		// data[1] is the UDS service response ID, always 0x41 for me
 		// data[2] is important to include - it's the PID
@@ -245,10 +253,8 @@ String dumpMessage(const CANMessage &message) {
 			lastIdx = message.data[0];
 		}
 	}
-	// hmm... Since the binary data can include zeros
-	// I may have to do the base85 encoding on the fly
-	// rather than right before publish...
 	for (int i = startIdx; i <= lastIdx; i++) {
+		*encP++ = 
 		str += String::format("%02x", message.data[i]);
 	}
 	str += ",";
